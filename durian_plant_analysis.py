@@ -1,7 +1,5 @@
 import cv2
-import os
 import numpy as np
-from growth_rate_analysis import analyze_growth_rate
 
 def read_image(file_path):
     image = cv2.imread(file_path)
@@ -19,31 +17,6 @@ def segment_image(gray_image):
     ret, thresholded = cv2.threshold(gray_image, 127, 255, cv2.THRESH_BINARY_INV)
     contours, hierarchy = cv2.findContours(thresholded, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     return contours
-
-def process_durian_plant_images(image_paths):
-    measurements = []
-    previous_measurements = []
-    current_measurement = None
-
-    for image_path in image_paths:
-        result = analyze_durian_plant(image_path, previous_measurements, current_measurement)
-        measurements.append(result)
-        previous_measurements.append(result)
-        current_measurement = result
-
-    return measurements
-
-# Specify the folder locations for the current and previous sets of durian tree images
-current_images_folder = 'D:\Desktop\FYP\duriantrees1'
-previous_images_folder = 'D:\Desktop\FYP\duriantrees2'
-
-# Automatically obtain the image paths from the folders
-current_image_paths = [os.path.join(current_images_folder, img) for img in os.listdir(current_images_folder) if img.endswith('.jpg')]
-previous_image_paths = [os.path.join(previous_images_folder, img) for img in os.listdir(previous_images_folder) if img.endswith('.jpg')]
-
-# Process the images and obtain measurements
-current_measurements = process_durian_plant_images(current_image_paths)
-previous_measurements = process_durian_plant_images(previous_image_paths)
 
 def extract_canopy_size(image):
     # Convert the image to grayscale
@@ -136,6 +109,37 @@ def detect_deficiencies(canopy_size, stem_size, plant_height, greenness_index):
 
     return deficiencies
 
+# Custom function to analyze growth rate
+def analyze_growth_rate(canopy_size, stem_size, plant_height):
+    # You'll need to store previous measurements to calculate the growth rate
+    # For this example, let's assume you have a list of previous measurements
+    previous_measurements = [
+        {'canopy_size': 1000, 'stem_size': (10, 100), 'plant_height': 120},
+        {'canopy_size': 1100, 'stem_size': (12, 110), 'plant_height': 130},
+        # Add more previous measurements here
+    ]
+
+    # Calculate the average growth rate for each feature
+    canopy_growth_rate = (canopy_size - previous_measurements[-1]['canopy_size']) / len(previous_measurements)
+    
+    if stem_size is not None:
+        stem_width_growth_rate = (stem_size[0] - previous_measurements[-1]['stem_size'][0]) / len(previous_measurements)
+        stem_height_growth_rate = (stem_size[1] - previous_measurements[-1]['stem_size'][1]) / len(previous_measurements)
+    else:
+        stem_width_growth_rate = None
+        stem_height_growth_rate = None
+
+    plant_height_growth_rate = (plant_height - previous_measurements[-1]['plant_height']) / len(previous_measurements)
+
+    growth_rate = {
+        'canopy_growth_rate': canopy_growth_rate,
+        'stem_width_growth_rate': stem_width_growth_rate,
+        'stem_height_growth_rate': stem_height_growth_rate,
+        'plant_height_growth_rate': plant_height_growth_rate
+    }
+
+    return growth_rate
+
 # Custom function to analyze health
 def analyze_health(greenness_index):
     # You can use the greenness index to determine the health of the plant
@@ -170,7 +174,7 @@ def suggest_counteractions(deficiencies):
     return counteractions
 
 
-def analyze_durian_plant(image_path, previous_measurements, current_measurement=None):
+def analyze_durian_plant(file_path):
     image = read_image(file_path)
     gray_image = preprocess_image(image)
     edges = detect_edges(gray_image)
@@ -187,7 +191,7 @@ def analyze_durian_plant(image_path, previous_measurements, current_measurement=
     deficiencies = detect_deficiencies(canopy_size, stem_size, plant_height, greenness_index)
 
     # Analyze growth rate and health
-    growth_rate = analyze_growth_rate(current_measurement, previous_measurements)
+    growth_rate = analyze_growth_rate(canopy_size, stem_size, plant_height)
     health = analyze_health(greenness_index)
 
     # Detect deficiencies and suggest counteractions
@@ -226,6 +230,6 @@ def analyze_durian_plant(image_path, previous_measurements, current_measurement=
     }
 
 if __name__ == "__main__":
-    file_path = 'D:\Desktop\FYP\duriantrees1\durian_tree1.JPG'
-    result = analyze_durian_plant(file_path, previous_measurements, current_measurement=None)
+    file_path = 'D:\Desktop\FYP\duriantrees\durian_tree1.JPG'
+    result = analyze_durian_plant(file_path)
     print(result)
