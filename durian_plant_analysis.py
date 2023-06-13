@@ -18,6 +18,20 @@ def segment_image(gray_image):
     contours, hierarchy = cv2.findContours(thresholded, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     return contours
 
+def find_red_object(image):
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    lower_red = np.array([0, 100, 100])
+    upper_red = np.array([10, 255, 255])
+    mask = cv2.inRange(hsv, lower_red, upper_red)
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    if not contours:
+        return None
+    
+    largest_contour = max(contours, key=cv2.contourArea)
+    x, y, w, h = cv2.boundingRect(largest_contour)
+    return x, y, w, h
+
 def extract_canopy_size(image):
     # Convert the image to grayscale
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -38,7 +52,8 @@ def extract_canopy_size(image):
     x, y, w, h = cv2.boundingRect(largest_contour)
     canopy_size = w * h
 
-    return canopy_size
+    # Return the width, height, and size as a dictionary
+    return {'width': w, 'height': h, 'size': canopy_size}
 
 def analyze_nutrient_content(image):
     hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
@@ -173,55 +188,60 @@ def suggest_counteractions(deficiencies):
 
     return counteractions
 
-
 def analyze_durian_plant(file_path):
     image = read_image(file_path)
     gray_image = preprocess_image(image)
     edges = detect_edges(gray_image)
     contours = segment_image(gray_image)
-    canopy_size = extract_canopy_size(image)
+    canopy_data = extract_canopy_size(image)
     mask = analyze_nutrient_content(image)
-    greenness_index = calculate_greenness_index(mask, canopy_size)
+    greenness_index = calculate_greenness_index(mask, canopy_data['size'])
 
     # Measure stem size and height
     stem_size = measure_stem_size(image, contours)
     plant_height = measure_height(contours)
 
     # Detect deficiencies and suggest counteractions
-    deficiencies = detect_deficiencies(canopy_size, stem_size, plant_height, greenness_index)
+    deficiencies = detect_deficiencies(canopy_data['size'], stem_size, plant_height, greenness_index)
 
     # Analyze growth rate and health
-    growth_rate = analyze_growth_rate(canopy_size, stem_size, plant_height)
+    growth_rate = analyze_growth_rate(canopy_data['size'], stem_size, plant_height)
     health = analyze_health(greenness_index)
 
     # Detect deficiencies and suggest counteractions
-    deficiencies = detect_deficiencies(canopy_size, stem_size, plant_height, greenness_index)
+    deficiencies = detect_deficiencies(canopy_data['size'], stem_size, plant_height, greenness_index)
     counteractions = suggest_counteractions(deficiencies)
 
-    reference_object_length_cm = 30  # Length of the reference object in centimeters (e.g., a 30 cm ruler)
-    reference_object_length_pixels = 300  # Length of the reference object in pixels (measure this in the image)
-
-    # Calculate the conversion factor (pixels to centimeters)
-    pixels_to_cm = reference_object_length_cm / reference_object_length_pixels
+    red_object = find_red_object(image)
+    if red_object is not None:
+        x, y, w, h = red_object
+        pixel_to_cm_width = 30 / w
+        pixel_to_cm_height = 30 / h
+    else:
+        # Set default pixel to cm conversion factors if the red reference object is not found
+        pixel_to_cm_width = 0.1
+        pixel_to_cm_height = 0.1
 
     # Convert the canopy_size, stem_size, and plant_height values to centimeters using the conversion factor
-    canopy_size_cm = canopy_size * pixels_to_cm
+    canopy_size_cm = canopy_data['size'] * pixel_to_cm_width
 
     if stem_size is not None:
-        stem_size_cm = (stem_size[0] * pixels_to_cm, stem_size[1] * pixels_to_cm)
+        stem_size_cm = (stem_size[0] * pixel_to_cm_width, stem_size[1] * pixel_to_cm_height)
     else:
         stem_size_cm = None
 
-    plant_height_cm = plant_height * pixels_to_cm
+    plant_height_cm = plant_height * pixel_to_cm_height
 
     # Return the results as a dictionary
     return {
         'canopy_size_cm': canopy_size_cm,
         'stem_size_cm': stem_size_cm,
         'plant_height_cm': plant_height_cm,
-        'canopy_size': canopy_size,
+        'canopy_size': canopy_data['size'],
         'stem_size': stem_size,
         'plant_height': plant_height,
+        'canopy_width': canopy_data['width'],
+        'canopy_height': canopy_data['height'],
         'greenness_index': greenness_index,
         'growth_rate': growth_rate,
         'health': health,
