@@ -1,15 +1,16 @@
 import os
+import cv2
 import pandas as pd
 from durian_plant_analysis import analyze_durian_plant
 
 # Define the directory containing the images
-image_dir = "D:\Desktop\FYP\duriantrees1"
+image_dir = "D:\Desktop\FYP\exampletrees1"
 
 # Define the output file path
 output_file = "D:\Desktop\FYP\Datasets_Durian.xlsx"
 
 # Define the column names for the output file
-column_names = ['image_name', 'canopy_size_cm', 'stem_size_cm', 'plant_height_cm', 'canopy_size', 'stem_size', 'plant_height', 'greenness_index', 'growth_rate', 'health', 'deficiencies', 'counteractions']
+column_names = ['image_name', 'canopy_width', 'canopy_height', 'canopy_size', 'stem_size', 'plant_height', 'greenness_index', 'growth_rate', 'health', 'deficiencies', 'counteractions']
 
 # Create an empty DataFrame to store the results
 results_df = pd.DataFrame(columns=column_names)
